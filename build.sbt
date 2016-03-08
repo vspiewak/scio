@@ -43,6 +43,7 @@ val scalaCheckVersion = "1.13.0"
 val scalaMacrosVersion = "2.1.0"
 val scalaTestVersion = "2.2.6"
 val slf4jVersion = "1.7.18"
+val flinkDataflowVersion = "0.3-SNAPSHOT"
 
 val commonSettings = Project.defaultSettings ++ Sonatype.sonatypeSettings ++ assemblySettings ++ Seq(
   organization       := "com.spotify",
@@ -121,6 +122,7 @@ lazy val assemblySettings = Seq(
     case s if s.endsWith("jansi.dll") => MergeStrategy.rename
     case s if s.endsWith(".jnilib") => MergeStrategy.rename
     case s if s.endsWith("libjansi.so") => MergeStrategy.rename
+    case s if s.endsWith("javax/annotation/Syntax.java") => MergeStrategy.first
     case s => old(s)
   }
   }
@@ -299,6 +301,19 @@ lazy val scioRepl: Project = Project(
   )
 ).settings(
   assemblyJarName in assembly := s"scio-repl-${version.value}-fat.jar"
+).dependsOn(
+  scioCore,
+  scioFlink
+)
+
+lazy val scioFlink: Project = Project(
+  "scio-flink",
+  file("scio-flink"),
+  settings = commonSettings ++ Seq(
+    libraryDependencies ++= Seq(
+      "com.dataartisans" %% "flink-dataflow" % flinkDataflowVersion
+    )
+  )
 ).dependsOn(
   scioCore
 )
