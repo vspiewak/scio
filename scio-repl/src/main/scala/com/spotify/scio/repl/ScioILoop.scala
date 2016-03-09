@@ -154,7 +154,23 @@ class ScioILoop(scioClassLoader: ScioReplClassLoader,
   private val runScioCmd = LoopCommand.cmd(
     "runScio", "<[context-name] | sc>", "run Scio pipeline", runScioCmdImpl)
 
-  private val scioCommands = List(newScioCmd, newLocalScioCmd, scioOptsCmd)
+  private def listCmdImpl(args: String) = {
+    val scioTypes = Set(
+      "com.spotify.scio.repl.ReplScioContext",
+      "com.spotify.scio.ScioResult",
+      "scala.concurrent.Future")
+    intp.definedTerms
+      .foreach { n =>
+        val tpe = intp.typeOfTerm(n.toString).resultType
+        echo(intp.typeOfTerm(n.toString))
+        if (scioTypes.contains(tpe.toString)) {
+          echo(n.toString + ": " + tpe.toString)
+        }
+      }
+  }
+  private val listCmd = LoopCommand.cmd("listScio", "", "list Scio values", listCmdImpl)
+
+  private val scioCommands = List(newScioCmd, newLocalScioCmd, scioOptsCmd, listCmd)
 
   // TODO: find way to inject those into power commands. For now unused.
   private val scioPowerCommands = List(createJarCmd, getNextJarCmd, runScioCmd)
@@ -244,6 +260,7 @@ class ScioILoop(scioClassLoader: ScioReplClassLoader,
       createBigQueryClient()
       newScioCmdImpl("sc")
       loadIoCommands()
+      listCmdImpl("")
     }
   }
 
