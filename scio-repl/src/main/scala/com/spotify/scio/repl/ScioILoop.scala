@@ -17,12 +17,13 @@
 
 package com.spotify.scio.repl
 
-import java.io.BufferedReader
+import java.io.{BufferedReader, File}
 
 import com.google.cloud.dataflow.sdk.options.{DataflowPipelineOptions, PipelineOptionsFactory}
 import com.spotify.scio.bigquery.BigQueryClient
 import com.spotify.scio.scioVersion
 import com.spotify.scio.util.GCloudConfigUtils
+import org.apache.avro.Schema
 
 import scala.tools.nsc.GenericRunnerSettings
 import scala.tools.nsc.interpreter.{IR, JPrintWriter}
@@ -154,7 +155,31 @@ class ScioILoop(scioClassLoader: ScioReplClassLoader,
   private val runScioCmd = LoopCommand.cmd(
     "runScio", "<[context-name] | sc>", "run Scio pipeline", runScioCmdImpl)
 
-  private val scioCommands = List(newScioCmd, newLocalScioCmd, scioOptsCmd)
+  private def readAvroCmdImpl(path: String) = {
+    // https://issues.scala-lang.org/browse/SI-8305
+    val r1 = intp.beQuietDuring {
+      intp.interpret(s"""val _avroSchemaFile = avroSchemaFile("$path").toString""")
+    }
+    if (r1 == IR.Success) {
+      val schemaFile = intp.valueOfTerm("_avroSchemaFile").get.asInstanceOf[String]
+      val r2 = intp.beQuietDuring {
+        intp.interpret(s"""val _avroSchemaJar = avroSchemaJar("$schemaFile").toString""")
+      }
+      if (r2 == IR.Success) {
+        val jarFile = intp.valueOfTerm("_avroSchemaJar").get.asInstanceOf[String]
+        require(jarFile)
+        val schema = new Schema.Parser().parse(new File(schemaFile))
+        echo(s"Reading Avro file of type ${schema.getFullName}")
+        intp.interpret(s"""readAvro[${schema.getFullName}]("$path")""")
+      }
+    }
+    Result.default
+  }
+
+  private val readAvroCmd = LoopCommand.cmd(
+    "readAvro", "<path>", "read Avro file", readAvroCmdImpl)
+
+  private val scioCommands = List(newScioCmd, newLocalScioCmd, scioOptsCmd, readAvroCmd)
 
   // TODO: find way to inject those into power commands. For now unused.
   private val scioPowerCommands = List(createJarCmd, getNextJarCmd, runScioCmd)

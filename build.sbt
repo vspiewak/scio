@@ -308,8 +308,10 @@ lazy val scioRepl: Project = Project(
       "jline" % "jline" % scalaBinaryVersion.value,
       "org.scala-lang" % "scala-compiler" % scalaVersion.value,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      paradiseDependency,
       "com.nrinaudo" %% "kantan.csv" % csvVersion,
-      paradiseDependency
+      "org.apache.avro" % "avro-compiler" % avroVersion,
+      "org.eclipse.jdt.core.compiler" % "ecj" % "4.5.1"
     ),
     libraryDependencies ++= (
       if (scalaBinaryVersion.value == "2.10")
@@ -321,7 +323,8 @@ lazy val scioRepl: Project = Project(
 ).settings(
   assemblyJarName in assembly := s"scio-repl-${version.value}.jar"
 ).dependsOn(
-  scioCore
+  scioCore,
+  scioHdfs
 )
 
 // =======================================================================
