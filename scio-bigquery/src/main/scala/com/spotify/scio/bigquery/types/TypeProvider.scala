@@ -25,6 +25,7 @@ import com.spotify.scio.bigquery.{BigQueryClient, BigQueryUtil}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.{Map => MMap}
+import scala.reflect.ClassTag
 import scala.reflect.macros._
 
 // scalastyle:off line.size.limit
@@ -77,7 +78,7 @@ private[types] object TypeProvider {
       case List(q"case class $name(..$fields) { ..$body }") =>
         val defSchema = q"override def schema: ${p(c, GModel)}.TableSchema = ${p(c, SType)}.schemaOf[$name]"
         q"""${caseClass(c)(name, fields, body)}
-            ${companion(c)(name, Nil, Seq(defSchema), fields.asInstanceOf[Seq[Tree]].size)}
+            ${companion(c)(name, Nil, Seq(defSchema), fields.asInstanceOf[Seq[Tree]].size, None)}
         """
       case t => c.abort(c.enclosingPosition, s"Invalid annotation $t")
     }
@@ -136,11 +137,13 @@ private[types] object TypeProvider {
 
     val (fields, records) = toFields(schema.getFields)
 
+    val options = extractOptions(c)(annottees)
+
     val r = annottees.map(_.tree) match {
-      case List(q"class $name") =>
+      case List(q"$modifiers class $name") =>
         val defSchema = q"override def schema: ${p(c, GModel)}.TableSchema = ${p(c, SUtil)}.parseSchema(${schema.toString})"
         q"""${caseClass(c)(name, fields, Nil)}
-            ${companion(c)(name, traits, Seq(defSchema) ++ overrides, fields.size)}
+            ${companion(c)(name, traits, Seq(defSchema) ++ overrides, fields.size, Some(options))}
             ..$records
         """
       case t => c.abort(c.enclosingPosition, s"Invalid annotation $t")
@@ -151,6 +154,40 @@ private[types] object TypeProvider {
   }
   // scalastyle:on cyclomatic.complexity
   // scalastyle:on method.length
+
+  // TODO: scala 2.11
+  // private def extractOptions(c: blackbox.Context)(annotees: Seq[c.Expr[Any]])
+  // : BigQueryOptions = {
+  private def extractOptions(c: Context)(annotees: Seq[c.Expr[Any]]): BigQueryOptions = {
+    import c.universe._
+
+    def booleanValue[T <: java.lang.annotation.Annotation : ClassTag](tree: Seq[Tree]): Boolean = {
+      val cls = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
+      val default = cls.getMethod("value").getDefaultValue.asInstanceOf[Boolean]
+      tree match {
+        case Seq(q"value = $value") => value.toString().toBoolean
+        case Seq(q"$value") => value.toString().toBoolean
+        case Nil => default
+        case _ => c.abort(c.enclosingPosition, "Invalid annotation")
+      }
+    }
+
+    var opts = BigQueryOptions()
+    annotees.map(_.tree) match {
+      case List(q"$modifiers class $name") =>
+        modifiers.asInstanceOf[Modifiers].annotations.foreach {
+          case Apply(annontation, params) =>
+            annontation match {
+              case q"new BigQueryOption.flattenResults" =>
+                val v = booleanValue[BigQueryOption.flattenResults](params)
+                opts = opts.copy(flattenResults = v)
+              case _ => c.abort(c.enclosingPosition, "Invalid annotation")
+            }
+        }
+        opts
+      case _ => c.abort(c.enclosingPosition, "Invalid annotation")
+    }
+  }
 
   /** Extract string from annotation. */
   // TODO: scala 2.11
@@ -193,20 +230,24 @@ private[types] object TypeProvider {
   // TODO: scala 2.11
   // private def companion(c: blackbox.Context)
   private def companion(c: Context)
-                       (name: c.TypeName, traits: Seq[c.Tree], methods: Seq[c.Tree], numFields: Int): c.Tree = {
+                       (name: c.TypeName, traits: Seq[c.Tree], methods: Seq[c.Tree],
+                        numFields: Int, options: Option[BigQueryOptions]): c.Tree = {
     import c.universe._
     // TODO: scala 2.11
     // val tupled = if (numFields > 1 && numFields <= 22) Seq(q"def tupled = (${TermName(name.toString)}.apply _).tupled") else Nil
     val tupled = if (numFields > 1 && numFields <= 22) Seq(q"def tupled = (${newTermName(name.toString)}.apply _).tupled") else Nil
-    val m = converters(c)(name) ++ tupled ++ methods
+    val opts = options.map(o => q"val options = ${p(c, o.toString)}")
+    val m = converters(c)(name) ++ tupled ++ methods ++ opts
     // TODO: scala 2.11
     // val tn = TermName(name.toString)
     val tn = newTermName(name.toString)
+
     q"""object $tn extends ${p(c, SType)}.HasSchema[$name] with ..$traits {
           ..$m
         }
     """
   }
+
   /** Generate override converter methods for HasSchema[T]. */
   // TODO: scala 2.11
   // private def converters(c: blackbox.Context)(name: c.TypeName): Seq[c.Tree] = {
@@ -243,3 +284,5 @@ private[types] object NameProvider {
   private def camelCase(s: String): String =
     s.split('_').filter(_.nonEmpty).map(t => t(0).toUpper + t.drop(1).toLowerCase).mkString("")
 }
+
+case class BigQueryOptions(flattenResults: Boolean = false)
