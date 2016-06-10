@@ -277,7 +277,9 @@ lazy val scioHdfs: Project = Project(
     description := "Scio add-on for HDFS",
     libraryDependencies ++= Seq(
       "org.apache.avro" % "avro-mapred" % avroVersion classifier("hadoop2"),
-      "org.apache.hadoop" % "hadoop-client" % hadoopVersion exclude ("org.slf4j", "slf4j-log4j12")
+      "org.apache.hadoop" % "hadoop-client" % hadoopVersion exclude ("org.slf4j", "slf4j-log4j12"),
+      "org.apache.hadoop" % "hadoop-distcp" % hadoopVersion,
+      "com.google.cloud.bigdataoss" % "gcs-connector" % "1.4.5-hadoop2"
     )
   )
 ).dependsOn(
@@ -348,7 +350,8 @@ lazy val scioRepl: Project = Project(
   assemblyJarName in assembly := s"scio-repl-${version.value}.jar"
 ).dependsOn(
   scioCore,
-  scioExtra
+  scioExtra,
+  scioHdfs
 )
 
 // =======================================================================
