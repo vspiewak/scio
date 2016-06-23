@@ -177,7 +177,8 @@ lazy val root: Project = Project(
   scioHdfs,
   scioRepl,
   scioExamples,
-  scioSchemas
+  scioSchemas,
+  scioML
 )
 
 lazy val scioCore: Project = Project(
@@ -358,6 +359,18 @@ lazy val scioRepl: Project = Project(
 ).dependsOn(
   scioCore,
   scioExtra
+)
+
+lazy val scioML: Project = Project(
+  "scio-ml",
+  file("scio-ml"),
+  settings = commonSettings ++ noPublishSettings ++ Seq(
+    libraryDependencies ++= Seq(
+      "org.slf4j" % "slf4j-simple" % slf4jVersion
+    )
+  )
+).dependsOn(
+  scioCore
 )
 
 // =======================================================================
