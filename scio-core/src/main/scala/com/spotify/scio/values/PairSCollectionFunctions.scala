@@ -26,6 +26,7 @@ import com.spotify.scio.ScioContext
 import com.spotify.scio.util._
 import com.spotify.scio.util.random.{BernoulliValueSampler, PoissonValueSampler}
 import com.twitter.algebird.{Aggregator, _}
+import org.apache.commons.math3.distribution.PoissonDistribution
 
 import scala.reflect.ClassTag
 
@@ -66,6 +67,47 @@ class PairSCollectionFunctions[K, V](val self: SCollection[(K, V)])
           .setCoder(self.getCoder[(K, UO)])
     })
     context.wrap(o)
+  }
+
+  // TODO: V must be Double
+  def poissonBootstrap(samples: Long)(implicit hasher: K => Long)
+  : SCollection[(Long, (Double, Int))] =
+  {
+    val distribution = new PoissonDistribution(1.0)
+
+    self.flatMap { case (k, xi) =>
+      distribution.reseedRandomGenerator(hasher(k))
+      (0L until samples)
+        .map(j => (j, distribution.sample()))
+        .flatMap{ case (j, m) => if (m == 0) Nil else Seq((j, (xi.asInstanceOf[Double], m)))}
+    }
+  }
+
+  def poissonTiles(sample: Long = 1000, tiles: Int = 100)(implicit hasher: K => Long)
+  : SCollection[Double] = {
+    self.poissonBootstrap(sample)
+    // implement http://www.cs.umd.edu/~samir/498/manku.pdf
+    ???
+  }
+
+  def poissonVariance(samples: Long = 1000)(implicit hasher: K => Long): SCollection[Double] = {
+    self.poissonBootstrap(samples)
+      .map{ case (j, (xi, m)) => (j, (m * xi, m))}
+      .sumByKey
+      .map{ case (j, (smxi, sm)) => (j, smxi/sm) }
+      .groupBy(_ => Unit) // push everything to single reducer, it's small
+      .map { case (_, values) =>
+        //TODO: for now, all in single map - probably does not make sense to distribute
+        val bootstraps = values.toArray.map(_._2)
+        val bMean = bootstraps.sum / bootstraps.size
+
+        bootstraps.map(b => math.pow(b - bMean, 2)).sum
+      }
+  }
+
+  def poissonStdev(samples: Long = 1000)(implicit hasher: K => Long): SCollection[Double] = {
+    self.poissonVariance(samples)
+      .map(math.sqrt)
   }
 
   /**
