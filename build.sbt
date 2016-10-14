@@ -322,6 +322,7 @@ lazy val scioExamples: Project = Project(
 ).settings(
   commonSettings ++ noPublishSettings,
   libraryDependencies ++= Seq(
+    "com.spotify.data" % "spotify-data-schemas" % "1.0-SNAPSHOT",
     "org.slf4j" % "slf4j-simple" % slf4jVersion,
     "org.scalacheck" %% "scalacheck" % scalaCheckVersion % "test"
   ),
