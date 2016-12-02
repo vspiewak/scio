@@ -32,7 +32,13 @@ import org.apache.avro.specific.SpecificRecordBase
 
 import scala.collection.convert.Wrappers.JIterableWrapper
 
-private[scio] class KryoAtomicCoder[T] extends AtomicCoder[T] {
+trait KryoRegistrator {
+  def apply(k: Kryo): Unit
+}
+
+private[scio] class KryoAtomicCoder[T](init: KryoRegistrator) extends AtomicCoder[T] {
+
+  def this() = this(null)
 
   @transient
   private lazy val kryo: ThreadLocal[Kryo] = new ThreadLocal[Kryo] {
@@ -56,6 +62,8 @@ private[scio] class KryoAtomicCoder[T] extends AtomicCoder[T] {
 
       val algebirdRegistrar = new AlgebirdRegistrar()
       algebirdRegistrar(k)
+
+      if (init != null) init(k)
 
       k
     }
