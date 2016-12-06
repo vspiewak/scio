@@ -46,6 +46,7 @@ import com.spotify.scio.options.ScioOptions
 import com.spotify.scio.testing._
 import com.spotify.scio.util.{CallSites, ScioUtil}
 import com.spotify.scio.values._
+import com.twitter.chill.algebird.AlgebirdRegistrar
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.specific.SpecificRecordBase
@@ -167,6 +168,7 @@ class ScioContext private[scio] (val options: PipelineOptions,
     val o = optionsAs[ScioOptions]
     o.setScalaVersion(scalaVersion)
     o.setScioVersion(scioVersion)
+//    o.setKryoRegistrators(Seq(classOf[AlgebirdRegistrar].getName).asJava)
   }
 
   private[scio] val testId: Option[String] =
@@ -407,7 +409,7 @@ class ScioContext private[scio] (val options: PipelineOptions,
     if (this.isTest) {
       this.getTestInput(ObjectFileIO[T](path))
     } else {
-      val coder = pipeline.getCoderRegistry.getScalaCoder[T]
+      val coder = pipeline.getCoderRegistry.getScalaCoder[T](optionsAs[ScioOptions])
       this.avroFile[GenericRecord](path, AvroBytesUtil.schema)
         .parDo(new DoFn[GenericRecord, T] {
           override def processElement(c: DoFn[GenericRecord, T]#ProcessContext): Unit = {
@@ -658,7 +660,7 @@ class ScioContext private[scio] (val options: PipelineOptions,
    * @group in_memory
    */
   def parallelize[T: ClassTag](elems: Iterable[T]): SCollection[T] = requireNotClosed {
-    val coder = pipeline.getCoderRegistry.getScalaCoder[T]
+    val coder = pipeline.getCoderRegistry.getScalaCoder[T](optionsAs[ScioOptions])
     wrap(this.applyInternal(Create.of(elems.asJava).withCoder(coder)))
       .setName(truncate(elems.toString()))
   }
@@ -669,7 +671,7 @@ class ScioContext private[scio] (val options: PipelineOptions,
    */
   def parallelize[K: ClassTag, V: ClassTag](elems: Map[K, V]): SCollection[(K, V)] =
   requireNotClosed {
-    val coder = pipeline.getCoderRegistry.getScalaKvCoder[K, V]
+    val coder = pipeline.getCoderRegistry.getScalaKvCoder[K, V](optionsAs[ScioOptions])
     wrap(this.applyInternal(Create.of(elems.asJava).withCoder(coder)))
       .map(kv => (kv.getKey, kv.getValue))
       .setName(truncate(elems.toString()))
@@ -681,7 +683,7 @@ class ScioContext private[scio] (val options: PipelineOptions,
    */
   def parallelizeTimestamped[T: ClassTag](elems: Iterable[(T, Instant)])
   : SCollection[T] = requireNotClosed {
-    val coder = pipeline.getCoderRegistry.getScalaCoder[T]
+    val coder = pipeline.getCoderRegistry.getScalaCoder[T](optionsAs[ScioOptions])
     val v = elems.map(t => TimestampedValue.of(t._1, t._2))
     wrap(this.applyInternal(Create.timestamped(v.asJava).withCoder(coder)))
       .setName(truncate(elems.toString()))
@@ -693,7 +695,7 @@ class ScioContext private[scio] (val options: PipelineOptions,
    */
   def parallelizeTimestamped[T: ClassTag](elems: Iterable[T], timestamps: Iterable[Instant])
   : SCollection[T] = requireNotClosed {
-    val coder = pipeline.getCoderRegistry.getScalaCoder[T]
+    val coder = pipeline.getCoderRegistry.getScalaCoder[T](optionsAs[ScioOptions])
     val v = elems.zip(timestamps).map(t => TimestampedValue.of(t._1, t._2))
     wrap(this.applyInternal(Create.timestamped(v.asJava).withCoder(coder)))
       .setName(truncate(elems.toString()))

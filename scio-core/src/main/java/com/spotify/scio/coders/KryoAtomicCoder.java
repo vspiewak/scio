@@ -42,6 +42,7 @@ public class KryoAtomicCoder<T> extends AtomicCoder<T> {
     }
   };
 
+  // FIXME: remove this
   public static <T> KryoAtomicCoder<T> of() {
     return new KryoAtomicCoder<>(Collections.<String>emptyList());
   }
@@ -82,7 +83,7 @@ public class KryoAtomicCoder<T> extends AtomicCoder<T> {
     }
 
     private Object readResolve() {
-      return new KryoAtomicCoder(registrars);
+      return new KryoAtomicCoder<T>(registrars);
     }
   }
 
