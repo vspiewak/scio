@@ -20,12 +20,9 @@ package com.spotify.scio
 import java.lang.{Float => JFloat}
 
 import com.google.cloud.dataflow.sdk.coders._
-import com.google.cloud.dataflow.sdk.coders.protobuf.ProtoCoder
 import com.google.cloud.dataflow.sdk.values.{KV, TypeDescriptor}
-import com.google.protobuf.Message
 import com.spotify.scio.coders.{FloatCoder, KryoAtomicCoder}
 import com.spotify.scio.util.ScioUtil
-import org.apache.avro.specific.SpecificRecord
 
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
@@ -74,7 +71,7 @@ private[scio] object Implicits {
       }
 
       if (coder == null || coder.getClass == classOf[SerializableCoder[T]]) {
-        KryoAtomicCoder[T]
+        KryoAtomicCoder.of()
       } else {
         coder
       }

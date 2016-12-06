@@ -19,60 +19,58 @@ package com.spotify.scio.coders
 
 import java.io.{ByteArrayOutputStream, IOException, InputStream, OutputStream}
 
+import com.esotericsoftware.kryo.io.{Input, Output}
 import com.google.cloud.dataflow.sdk.coders.Coder.Context
-import com.google.cloud.dataflow.sdk.coders._
+import com.google.cloud.dataflow.sdk.coders.{CoderException, InstantCoder, TableRowJsonCoder}
 import com.google.cloud.dataflow.sdk.util.VarInt
 import com.google.common.io.ByteStreams
 import com.google.protobuf.Message
 import com.twitter.chill._
-import com.twitter.chill.algebird.AlgebirdRegistrar
 import com.twitter.chill.protobuf.ProtobufSerializer
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.specific.SpecificRecordBase
 
 import scala.collection.convert.Wrappers.JIterableWrapper
 
-private[scio] class KryoAtomicCoder[T] extends AtomicCoder[T] {
+private[coders] object KryoAtomicCoderUtil {
 
-  @transient
-  private lazy val kryo: ThreadLocal[Kryo] = new ThreadLocal[Kryo] {
-    override def initialValue(): Kryo = {
-      val k = KryoSerializer.registered.newKryo()
+  def newKryo(registrars: String*): Kryo = {
+    val k = KryoSerializer.registered.newKryo()
 
-      k.forClass(new CoderSerializer(InstantCoder.of()))
-      k.forClass(new CoderSerializer(TableRowJsonCoder.of()))
+    k.forClass(new CoderSerializer(InstantCoder.of()))
+    k.forClass(new CoderSerializer(TableRowJsonCoder.of()))
 
-      // java.lang.Iterable.asScala returns JIterableWrapper which causes problem.
-      // Treat it as standard Iterable instead.
-      k.register(classOf[JIterableWrapper[_]], new JIterableWrapperSerializer)
+    // java.lang.Iterable.asScala returns JIterableWrapper which causes problem.
+    // Treat it as standard Iterable instead.
+    k.register(classOf[JIterableWrapper[_]], new JIterableWrapperSerializer)
 
-      k.forSubclass[SpecificRecordBase](new SpecificAvroSerializer)
-      k.forSubclass[GenericRecord](new GenericAvroSerializer)
-      k.forSubclass[Message](new ProtobufSerializer)
+    k.forSubclass[SpecificRecordBase](new SpecificAvroSerializer)
+    k.forSubclass[GenericRecord](new GenericAvroSerializer)
+    k.forSubclass[Message](new ProtobufSerializer)
 
-      k.forClass(new KVSerializer)
-      // TODO:
-      // TimestampedValueCoder
+    k.forClass(new KVSerializer)
+    // TODO:
+    // TimestampedValueCoder
 
-      val algebirdRegistrar = new AlgebirdRegistrar()
-      algebirdRegistrar(k)
-
-      k
+    registrars.foreach { r =>
+      Class.forName(r).newInstance().asInstanceOf[IKryoRegistrar](k)
     }
+
+    k
   }
 
-  override def encode(value: T, outStream: OutputStream, context: Context): Unit = {
+  def encode[T](kryo: Kryo, value: T, outStream: OutputStream, context: Context): Unit = {
     if (value == null) {
       throw new CoderException("cannot encode a null value")
     }
     if (context.isWholeStream) {
       val output = new Output(outStream)
-      kryo.get().writeClassAndObject(output, value)
+      kryo.writeClassAndObject(output, value)
       output.flush()
     } else {
       val s = new ByteArrayOutputStream()
       val output = new Output(s)
-      kryo.get().writeClassAndObject(output, value)
+      kryo.writeClassAndObject(output, value)
       output.flush()
 
       VarInt.encode(s.size(), outStream)
@@ -80,9 +78,9 @@ private[scio] class KryoAtomicCoder[T] extends AtomicCoder[T] {
     }
   }
 
-  override def decode(inStream: InputStream, context: Context): T = {
+  def decode[T](kryo: Kryo, inStream: InputStream, context: Context): T = {
     val o = if (context.isWholeStream) {
-      kryo.get().readClassAndObject(new Input(inStream))
+      kryo.readClassAndObject(new Input(inStream))
     } else {
       val length = VarInt.decodeInt(inStream)
       if (length < 0) {
@@ -91,13 +89,9 @@ private[scio] class KryoAtomicCoder[T] extends AtomicCoder[T] {
 
       val value = Array.ofDim[Byte](length)
       ByteStreams.readFully(inStream, value)
-      kryo.get().readClassAndObject(new Input(value))
+      kryo.readClassAndObject(new Input(value))
     }
     o.asInstanceOf[T]
   }
 
-}
-
-private[scio] object KryoAtomicCoder {
-  def apply[T]: Coder[T] = new KryoAtomicCoder[T]
 }

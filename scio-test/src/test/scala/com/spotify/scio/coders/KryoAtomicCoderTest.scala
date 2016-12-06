@@ -35,7 +35,7 @@ class KryoAtomicCoderTest extends PipelineSpec {
   import com.spotify.scio.testing.TestingUtils._
 
   type CoderFactory = () => Coder[Any]
-  val cf = () => KryoAtomicCoder[Any]
+  val cf = () => KryoAtomicCoder.of[Any]()
 
   private def roundTrip[T: ClassTag](value: T) = new Matcher[CoderFactory] {
     override def apply(left: CoderFactory): MatchResult = {

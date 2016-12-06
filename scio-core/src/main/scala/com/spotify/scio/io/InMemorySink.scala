@@ -44,7 +44,7 @@ private[scio] class InMemorySink[T](private val id: String) extends Sink[T] {
 private class InMemoryWriteOperation[T](private val sink: Sink[T], private val id: String)
   extends WriteOperation[T, MBuffer[Array[Byte]]] {
 
-  private val coder: Coder[T] = KryoAtomicCoder[T]
+  private val coder: Coder[T] = KryoAtomicCoder.of()
 
   override def finalize(writerResults: Iterable[MBuffer[Array[Byte]]],
                         options: PipelineOptions): Unit =
@@ -56,8 +56,7 @@ private class InMemoryWriteOperation[T](private val sink: Sink[T], private val i
   override def createWriter(options: PipelineOptions): Writer[T, MBuffer[Array[Byte]]] =
     new InMemoryWriter(this)
 
-  override def getWriterResultCoder: Coder[MBuffer[Array[Byte]]] =
-    KryoAtomicCoder[MBuffer[Array[Byte]]]
+  override def getWriterResultCoder: Coder[MBuffer[Array[Byte]]] = KryoAtomicCoder.of()
 
 }
 
@@ -65,7 +64,7 @@ private class InMemoryWriter[T](private val writeOperation: WriteOperation[T, MB
   extends Writer[T, MBuffer[Array[Byte]]] {
 
   private val buffer: MBuffer[Array[Byte]] = MBuffer.empty
-  private val coder: Coder[T] = KryoAtomicCoder[T]
+  private val coder: Coder[T] = KryoAtomicCoder.of()
 
   override def getWriteOperation: WriteOperation[T, MBuffer[Array[Byte]]] = writeOperation
   override def write(value: T): Unit = buffer.append(CoderUtils.encodeToByteArray(coder, value))

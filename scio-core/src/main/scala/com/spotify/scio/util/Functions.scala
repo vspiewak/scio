@@ -38,10 +38,10 @@ private[scio] object Functions {
   private abstract class KryoCombineFn[VI, VA, VO] extends CombineFn[VI, VA, VO] {
 
     override def getAccumulatorCoder(registry: CoderRegistry, inputCoder: Coder[VI]): Coder[VA] =
-      KryoAtomicCoder[VA]
+      KryoAtomicCoder.of()
 
     override def getDefaultOutputCoder(registry: CoderRegistry, inputCoder: Coder[VI]): Coder[VO] =
-      KryoAtomicCoder[VO]
+      KryoAtomicCoder.of()
 
   }
 
