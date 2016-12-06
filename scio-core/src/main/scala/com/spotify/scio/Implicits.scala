@@ -46,6 +46,7 @@ private[scio] object Implicits {
       r.registerCoder(classOf[Double], classOf[DoubleCoder])
 
       // Fall back to Kryo
+      /*
       r.setFallbackCoderProvider(new CoderProvider {
         override def getCoder[T](`type`: TypeDescriptor[T]): Coder[T] = {
           val cls = `type`.getRawType
@@ -59,6 +60,7 @@ private[scio] object Implicits {
           }
         }
       })
+      */
     }
 
     def getScalaCoder[T: ClassTag]: Coder[T] = {
