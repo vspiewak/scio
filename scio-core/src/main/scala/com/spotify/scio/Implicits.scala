@@ -20,13 +20,12 @@ package com.spotify.scio
 import java.lang.{Float => JFloat}
 
 import com.google.cloud.dataflow.sdk.coders._
-import com.google.cloud.dataflow.sdk.options.{PipelineOptions, PipelineOptionsFactory}
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory
 import com.google.cloud.dataflow.sdk.values.{KV, TypeDescriptor}
 import com.spotify.scio.coders.{FloatCoder, KryoAtomicCoder}
-import com.spotify.scio.options.ScioOptions
+import com.spotify.scio.options.KryoOptions
 import com.spotify.scio.util.ScioUtil
 
-import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
@@ -64,11 +63,11 @@ private[scio] object Implicits {
     }
 
     // FIXME: remove these
-    private val opts = PipelineOptionsFactory.create().as(classOf[ScioOptions])
+    private val opts = PipelineOptionsFactory.create().as(classOf[KryoOptions])
     def getScalaCoder[T: ClassTag]: Coder[T] = getScalaCoder(opts)
     def getScalaKvCoder[K: ClassTag, V: ClassTag]: Coder[KV[K, V]] = getScalaKvCoder(opts)
 
-    def getScalaCoder[T: ClassTag](opts: ScioOptions): Coder[T] = {
+    def getScalaCoder[T: ClassTag](opts: KryoOptions): Coder[T] = {
       val coder = try {
         // This may fail in come cases, i.e. Malformed class name in REPL
         // Always fall back to Kryo
@@ -79,13 +78,13 @@ private[scio] object Implicits {
       }
 
       if (coder == null || coder.getClass == classOf[SerializableCoder[T]]) {
-        KryoAtomicCoder.of(opts.getKryoRegistrars)
+        KryoAtomicCoder.of(opts)
       } else {
         coder
       }
     }
 
-    def getScalaKvCoder[K: ClassTag, V: ClassTag](opts: ScioOptions): Coder[KV[K, V]] =
+    def getScalaKvCoder[K: ClassTag, V: ClassTag](opts: KryoOptions): Coder[KV[K, V]] =
       KvCoder.of(getScalaCoder[K](opts), getScalaCoder[V](opts))
 
   }

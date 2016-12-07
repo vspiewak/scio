@@ -20,8 +20,6 @@ package com.spotify.scio.options;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 
-import java.util.List;
-
 @Description("Internal options for Scio")
 public interface ScioOptions extends PipelineOptions {
   @Description("Scio version")
@@ -35,8 +33,4 @@ public interface ScioOptions extends PipelineOptions {
   @Description("Filename to save metrics to.")
   String getMetricsLocation();
   void setMetricsLocation(String version);
-
-  @Description("Full class names of Kryo registrars")
-  List<String> getKryoRegistrars();
-  void setKryoRegistrators(List<String> registrars);
 }

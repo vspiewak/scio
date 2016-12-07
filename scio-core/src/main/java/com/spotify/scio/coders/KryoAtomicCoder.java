@@ -22,42 +22,40 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.cloud.dataflow.sdk.coders.AtomicCoder;
 import com.google.cloud.dataflow.sdk.coders.CoderException;
+import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
+import com.spotify.scio.options.KryoOptions;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.util.Collections;
-import java.util.List;
-
-import static scala.collection.JavaConversions.asScalaBuffer;
 
 public class KryoAtomicCoder<T> extends AtomicCoder<T> {
 
-  private final List<String> registrars;
+  private final KryoOptions kryoOptions;
   private final ThreadLocal<Kryo> kryo = new ThreadLocal<Kryo>() {
     @Override
     protected Kryo initialValue() {
-      return KryoAtomicCoderUtil.newKryo(asScalaBuffer(registrars));
+      return KryoAtomicCoderUtil.newKryo(kryoOptions);
     }
   };
 
   // FIXME: remove this
   public static <T> KryoAtomicCoder<T> of() {
-    return new KryoAtomicCoder<>(Collections.<String>emptyList());
+    return new KryoAtomicCoder<>(PipelineOptionsFactory.as(KryoOptions.class));
   }
 
   @JsonCreator
-  public static <T> KryoAtomicCoder<T> of(@JsonProperty("registrars") List<String> registrars) {
-    return new KryoAtomicCoder<>(registrars);
+  public static <T> KryoAtomicCoder<T> of(@JsonProperty("options") KryoOptions kryoOptions) {
+    return new KryoAtomicCoder<>(kryoOptions);
   }
 
-  protected KryoAtomicCoder(final List<String> registrars) {
-    this.registrars = registrars;
+  protected KryoAtomicCoder(KryoOptions kryoOptions) {
+    this.kryoOptions = kryoOptions;
   }
 
-  public List<String> getRegistrars() {
-    return registrars;
+  public KryoOptions getKryoOptions() {
+    return kryoOptions;
   }
 
   @Override
@@ -72,18 +70,18 @@ public class KryoAtomicCoder<T> extends AtomicCoder<T> {
   }
 
   private Object writeReplace() {
-    return new SerializableKryoCoderProxy<>(registrars);
+    return new SerializableKryoCoderProxy<>(kryoOptions);
   }
 
   private static class SerializableKryoCoderProxy<T> implements Serializable {
-    private final List<String> registrars;
+    private final KryoOptions kryoOptions;
 
-    public SerializableKryoCoderProxy(List<String> registrars) {
-      this.registrars = registrars;
+    public SerializableKryoCoderProxy(KryoOptions kryoOptions) {
+      this.kryoOptions = kryoOptions;
     }
 
     private Object readResolve() {
-      return new KryoAtomicCoder<T>(registrars);
+      return new KryoAtomicCoder<T>(kryoOptions);
     }
   }
 

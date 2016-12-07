@@ -25,16 +25,18 @@ import com.google.cloud.dataflow.sdk.coders.{CoderException, InstantCoder, Table
 import com.google.cloud.dataflow.sdk.util.VarInt
 import com.google.common.io.ByteStreams
 import com.google.protobuf.Message
+import com.spotify.scio.options.KryoOptions
 import com.twitter.chill._
 import com.twitter.chill.protobuf.ProtobufSerializer
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.specific.SpecificRecordBase
 
+import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JIterableWrapper
 
 private[coders] object KryoAtomicCoderUtil {
 
-  def newKryo(registrars: String*): Kryo = {
+  def newKryo(options: KryoOptions): Kryo = {
     val k = KryoSerializer.registered.newKryo()
 
     k.forClass(new CoderSerializer(InstantCoder.of()))
@@ -52,8 +54,8 @@ private[coders] object KryoAtomicCoderUtil {
     // TODO:
     // TimestampedValueCoder
 
-    registrars.foreach { r =>
-      Class.forName(r).newInstance().asInstanceOf[IKryoRegistrar](k)
+    options.getKryoRegistrars.asScala.foreach { cls =>
+      cls.newInstance()(k)
     }
 
     k
