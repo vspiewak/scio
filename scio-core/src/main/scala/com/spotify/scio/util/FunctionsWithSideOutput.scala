@@ -23,7 +23,7 @@ import com.spotify.scio.values.SideOutputContext
 private[scio] object FunctionsWithSideOutput {
 
   trait SideOutputFn[T, U] extends DoFn[T, U] {
-    private var ctx: SideOutputContext[T] = null
+    private var ctx: SideOutputContext[T] = _
     def sideOutputContext(c: DoFn[T, U]#ProcessContext): SideOutputContext[T] = {
       if (ctx == null || ctx.context != c) {
         // Workaround for type inference limit
