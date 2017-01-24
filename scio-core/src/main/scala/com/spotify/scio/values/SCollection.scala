@@ -921,7 +921,8 @@ sealed trait SCollection[T] extends PCollectionWrapper[T] {
    */
   def saveAsBigQuery(table: TableReference, schema: TableSchema,
                      writeDisposition: WriteDisposition,
-                     createDisposition: CreateDisposition)
+                     createDisposition: CreateDisposition,
+                     tableDescription: String)
                     (implicit ev: T <:< TableRow): Future[Tap[TableRow]] = {
     val tableSpec = bqio.BigQueryIO.toTableSpec(table)
     if (context.isTest) {
@@ -937,6 +938,7 @@ sealed trait SCollection[T] extends PCollectionWrapper[T] {
       if (schema != null) transform = transform.withSchema(schema)
       if (createDisposition != null) transform = transform.withCreateDisposition(createDisposition)
       if (writeDisposition != null) transform = transform.withWriteDisposition(writeDisposition)
+      if (tableDescription != null) transform = transform.withTableDescription(tableDescription)
       this.asInstanceOf[SCollection[TableRow]].applyInternal(transform)
 
       if (writeDisposition == WriteDisposition.WRITE_APPEND) {
@@ -953,10 +955,15 @@ sealed trait SCollection[T] extends PCollectionWrapper[T] {
    */
   def saveAsBigQuery(tableSpec: String, schema: TableSchema = null,
                      writeDisposition: WriteDisposition = null,
-                     createDisposition: CreateDisposition = null)
+                     createDisposition: CreateDisposition = null,
+                     tableDescription: String = null)
                     (implicit ev: T <:< TableRow): Future[Tap[TableRow]] =
     saveAsBigQuery(
-      bqio.BigQueryIO.parseTableSpec(tableSpec), schema, writeDisposition, createDisposition)
+      bqio.BigQueryIO.parseTableSpec(tableSpec),
+      schema,
+      writeDisposition,
+      createDisposition,
+      tableDescription)
 
   /**
    * Save this SCollection as a Datastore dataset. Note that elements must be of type Entity.
