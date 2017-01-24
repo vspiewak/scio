@@ -22,14 +22,14 @@ import com.google.bigtable.repackaged.com.google.cloud.config.BulkOptions;
 import com.google.cloud.bigtable.dataflow.AbstractCloudBigtableTableDoFn;
 import com.google.cloud.bigtable.dataflow.CloudBigtableConfiguration;
 import com.google.cloud.bigtable.dataflow.CloudBigtableIO;
-import com.google.cloud.dataflow.sdk.transforms.Aggregator;
-import com.google.cloud.dataflow.sdk.transforms.DoFn;
-import com.google.cloud.dataflow.sdk.transforms.PTransform;
-import com.google.cloud.dataflow.sdk.transforms.Sum;
-import com.google.cloud.dataflow.sdk.values.KV;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-import com.google.cloud.dataflow.sdk.values.PDone;
 import com.google.common.collect.Maps;
+import org.apache.beam.sdk.transforms.Aggregator;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.Sum;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PDone;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.BufferedMutator;
 import org.apache.hadoop.hbase.client.BufferedMutatorParams;
@@ -48,7 +48,7 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 
 /**
  * <p>
- * Reimplemented utilities to create {@link com.google.cloud.dataflow.sdk.transforms.PTransform}s for
+ * Reimplemented utilities to create {@link org.apache.beam.sdk.transforms.PTransform}s for
  * writing to multiple Bigtable tables from within a dataflow pipeline.
  * </p>
 
