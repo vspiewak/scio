@@ -189,7 +189,7 @@ lazy val root: Project = Project(
   scioCore,
   scioTest,
   scioBigQuery,
-  // scioBigtable,
+  scioBigtable,
   scioExtra,
   scioHdfs,
   scioRepl,
