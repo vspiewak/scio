@@ -43,6 +43,13 @@ class TypeProviderTest extends FlatSpec with Matchers {
     """.stripMargin)
   class S3
 
+  @BigQueryType.fromSchema(
+    """
+      |{"fields": [{"mode": "REQUIRED", "name": "f1", "type": "INTEGER"}]}
+    """.stripMargin)
+  @description("Table S4")
+  class S4
+
   "BigQueryType.fromSchema" should "support string literal" in {
     val r = S1(1L)
     r.f1 shouldBe 1L
@@ -56,6 +63,10 @@ class TypeProviderTest extends FlatSpec with Matchers {
   it should "support multi-line string literal with stripMargin" in {
     val r = S3(1L)
     r.f1 shouldBe 1L
+  }
+
+  it should "support table description" in {
+    S4.tableDescription shouldBe "Table S4"
   }
 
   @BigQueryType.fromSchema("""{"fields": [{"name": "f1", "type": "INTEGER"}]}""")
@@ -381,6 +392,14 @@ class TypeProviderTest extends FlatSpec with Matchers {
   it should "support .toTableRow in companion object with >22 fields" in {
     val cls = classOf[(TwentyThree => TableRow)]
     (cls isAssignableFrom TwentyThree.toTableRow.getClass) shouldBe true
+  }
+
+  @BigQueryType.toTable
+  @description("Foo bar table description")
+  case class DescriptionTbl(a1:Int)
+
+  it should "support table description" in {
+    DescriptionTbl.tableDescription shouldBe "Foo bar table description"
   }
 
 }
